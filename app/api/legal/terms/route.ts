@@ -1,0 +1,16 @@
+import { NextResponse } from 'next/server'
+import fs from 'fs'
+import path from 'path'
+
+export async function GET() {
+    try {
+        const filePath = path.join(process.cwd(), 'data', 'legal', 'terms.txt')
+        const content = fs.readFileSync(filePath, 'utf8')
+        return new NextResponse(content, {
+            headers: { 'Content-Type': 'text/plain' }
+        })
+    } catch (error) {
+        console.error('Error reading terms:', error)
+        return NextResponse.json({ error: 'Terms not found' }, { status: 404 })
+    }
+}

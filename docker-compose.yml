@@ -1,0 +1,37 @@
+services:
+  app:
+    container_name: activiabook-app
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:54321}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_INTERNAL_URL: http://kong:8000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      POSTGREST_PRISMA_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres
+      SMTP_HOST: ${SMTP_HOST} #inbucket
+      SMTP_PORT: ${SMTP_PORT} #2500
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM} #welcome@activiabook.com
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME} #:-ActiviaBook Support}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME} #:-ActiviaBook}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+    #    depends_on:
+    #      - kong
+    #      - db
+    #      - inbucket
+    networks:
+      - default
+      - web-proxy
+
+networks:
+  default:
+  web-proxy:
+    external: ${USE_EXTERNAL_PROXY}

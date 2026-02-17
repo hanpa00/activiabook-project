@@ -1,0 +1,3 @@
+# Port mappings are now moved to docker-compose.yml and docker-compose.supabase.yml
+# Use this file for additional development-only overrides.
+services: {}
