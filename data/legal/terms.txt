@@ -55,10 +55,12 @@ Business Contact Information
 
 If you have any questions about this EULA, please contact us at:
 
-[Company name]
-[Address]
-[Telephone number]
-[Email address]
+Hanica Corp
+3571 Far West Blvd Suite #165
+Ausint, TX 78731
+512-222-9326
+hanicacorp@gmail.com
+
 Updates & Changes
 
 Licensor reserves the right, at its sole discretion, to modify or replace this EULA at any time. If a revision is material, we will provide at least 30 days’ notice prior to any new terms taking effect. By continuing to access or use our Software after those revisions become effective, you agree to be bound by the revised terms.
@@ -69,4 +71,4 @@ You agree that Licensor may collect and use technical data and related informati
 
 By clicking “I Agree” or installing or using the Software, you acknowledge that you have read this Agreement, understand it, and agree to be bound by its terms and conditions.
 
-[Software application name] [ Your company name]
+ActiviaBook - Hanica Corp

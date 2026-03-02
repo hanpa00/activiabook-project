@@ -73,13 +73,13 @@ export default function CloseAccountPage() {
                         Close User Account
                     </CardTitle>
                     <CardDescription>
-                        This action will soft-delete your profile. You will be signed out and unable to access your data unless your account is restored. A confirmation email will be sent to your registered email address with reactivation instructions.
+                        This action will delete your profile. You will be signed out and unable to access your data.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
                         <p className="font-medium mb-2">📧 Email Confirmation</p>
-                        <p>A confirmation email will be sent to <strong>{email}</strong> with details about your 30-day reactivation window.</p>
+                        <p>A confirmation email will be sent to <strong>{email}</strong> to confirm the closure of your account.</p>
                     </div>
 
                     <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4 text-sm text-destructive font-medium">

@@ -59,10 +59,10 @@ export function AiImportCard() {
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-primary" />
-                    AI-Powered Import
+                    OpenClaw AI Import
                 </CardTitle>
                 <CardDescription>
-                    Upload CSV statements. Gemini AI will identify data, balance entries, and create drafts.
+                    Upload CSV statements. OpenClaw AI will identify data, balance entries, and create drafts.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

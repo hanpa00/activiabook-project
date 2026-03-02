@@ -73,10 +73,10 @@ export async function sendAccountClosureEmail(to: string, userEmail: string) {
     const from = process.env.EMAIL_FROM || 'support@activiabook.com'
     const fromName = process.env.EMAIL_FROM_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'ActiviaBook'
     const appName = process.env.NEXT_PUBLIC_APP_NAME || 'ActiviaBook'
-    const reactivationDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+    const reactivationDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
     })
 
     const info = await transporter.sendMail({
@@ -112,5 +112,34 @@ export async function sendAccountClosureEmail(to: string, userEmail: string) {
     })
 
     console.log('Account closure email sent: %s', info.messageId)
+    return info
+}
+
+export async function sendPasswordChangedEmail(to: string) {
+    const from = process.env.EMAIL_FROM || 'security@activiabook.com'
+    const fromName = process.env.EMAIL_FROM_NAME || process.env.NEXT_PUBLIC_APP_NAME || 'ActiviaBook'
+    const appName = process.env.NEXT_PUBLIC_APP_NAME || 'ActiviaBook'
+
+    const info = await transporter.sendMail({
+        from: `"${fromName}" <${from}>`,
+        to,
+        subject: `Your ${appName} password has been changed`,
+        text: `Hello,\n\nThis is a notification that the password for your ${appName} account has been successfully changed.\n\nIf you did not make this change, please contact our support team immediately.\n\nBest regards,\nThe ${appName} Security Team`,
+        html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h1 style="color: #4f46e5;">Password Changed</h1>
+                <p>Hello,</p>
+                <p>This is a notification that the password for your <strong>${appName}</strong> account has been successfully changed.</p>
+                <div style="margin: 20px 0; padding: 15px; background-color: #f8fafc; border-radius: 6px; border-left: 4px solid #4f46e5;">
+                    <p style="margin: 0; color: #1e293b;">If you performed this action, you can safely ignore this email.</p>
+                </div>
+                <p><strong>Did you not make this change?</strong></p>
+                <p>If you did not change your password, please contact our support team immediately at ${process.env.EMAIL_FROM || 'support@activiabook.com'} to secure your account.</p>
+                <p style="color: #64748b; font-size: 14px; margin-top: 30px;">Best regards,<br>The ${appName} Security Team</p>
+            </div>
+        `,
+    })
+
+    console.log('Password change notification sent: %s', info.messageId)
     return info
 }

@@ -54,7 +54,8 @@ export default function SignUpPage() {
 
     const checkUserStatus = async (email: string) => {
         try {
-            const res = await fetch(`/api/auth/user-exists?email=${encodeURIComponent(email)}`)
+            const normalizedEmail = email.toLowerCase().trim()
+            const res = await fetch(`/api/auth/user-exists?email=${encodeURIComponent(normalizedEmail)}`)
             const data = await res.json()
             if (data.error) throw new Error(data.error)
             return data
@@ -83,7 +84,8 @@ export default function SignUpPage() {
 
         try {
             // 1. Check if user already exists
-            const status = await checkUserStatus(formData.email)
+            const normalizedEmail = formData.email.toLowerCase().trim()
+            const status = await checkUserStatus(normalizedEmail)
             if (status.exists) {
                 if (status.isClosed) {
                     if (status.canReactivate) {
@@ -103,7 +105,7 @@ export default function SignUpPage() {
 
             // 2. Proceed with Supabase sign up
             const { data, error } = await supabase.auth.signUp({
-                email: formData.email,
+                email: normalizedEmail,
                 password: formData.password,
                 options: {
                     emailRedirectTo: `${location.origin}/auth/callback`,
@@ -133,7 +135,7 @@ export default function SignUpPage() {
                         await fetch('/api/auth/signup-welcome', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: formData.email, name: formData.firstName || 'User' }),
+                            body: JSON.stringify({ email: normalizedEmail, name: formData.firstName || 'User' }),
                         })
                     } catch (emailError) {
                         console.error('Welcome email fetch failed:', emailError)

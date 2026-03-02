@@ -37,6 +37,15 @@ export default function ResetPasswordPage() {
         if (error) {
             setError(error.message)
         } else {
+            // Trigger notification email
+            try {
+                await fetch('/api/user/security/notify-password-change', {
+                    method: 'POST'
+                })
+            } catch (notifyError) {
+                console.error("Failed to send password change notification:", notifyError)
+            }
+
             setSuccess(true)
             setTimeout(() => {
                 router.push("/login")

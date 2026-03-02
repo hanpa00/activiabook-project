@@ -1,6 +1,7 @@
 
 import { createClient, createAdminClient } from "@/utils/supabase/server"
 import { NextResponse } from "next/server"
+import { sendPasswordChangedEmail } from "@/lib/email"
 
 export async function POST(req: Request) {
     try {
@@ -38,6 +39,11 @@ export async function POST(req: Request) {
         })
 
         if (updateError) throw updateError
+
+        // Send notification email
+        if (user.email) {
+            await sendPasswordChangedEmail(user.email)
+        }
 
         // Delete the used code (optional but good practice)
         await adminSupabase

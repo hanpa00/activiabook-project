@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import Papa from 'papaparse'
-import { processCsvWithAI } from '@/lib/gemini'
+import { processCsvWithAI } from '@/lib/openclaw'
 
 export async function POST(req: Request) {
     try {

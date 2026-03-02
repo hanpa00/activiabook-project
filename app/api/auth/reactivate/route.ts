@@ -11,10 +11,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
         }
 
+        const normalizedEmail = email.toLowerCase().trim()
         const supabase = await createClient()
 
         // 1. Check reactivation status to decide if we need authentication
-        const { data: statusData, error: statusError } = await supabase.rpc('get_user_reactivation_status', { email_to_check: email })
+        const { data: statusData, error: statusError } = await supabase.rpc('get_user_reactivation_status', { email_to_check: normalizedEmail })
         if (statusError) throw statusError
 
         const status = statusData[0] || {}
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
         if (needsAuth) {
             // 2a. Authenticate with old password for active "Restore"
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email,
+                email: normalizedEmail,
                 password,
             })
 
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
             const { data: { users }, error: listError } = await adminSupabase.auth.admin.listUsers()
             if (listError) throw listError
 
-            const user = users.find(u => u.email === email)
+            const user = users.find(u => u.email === normalizedEmail)
             if (user) {
                 // Overwrite the old password with the new one entered on the signup page
                 const { error: updateError } = await adminSupabase.auth.admin.updateUserById(
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
         const shouldReset = mode === 'fresh' || !status.can_reactivate
 
         const { data: reactivateData, error: reactivateError } = await supabase.rpc('reactivate_user_account_v3', {
-            email_to_reactivate: email,
+            email_to_reactivate: normalizedEmail,
             reset_data: shouldReset,
             p_first_name: profileData?.firstName,
             p_last_name: profileData?.lastName,
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
         // If we bypassed auth, we should sign in now so the session is established
         if (!needsAuth) {
             const { error: finalSignInError } = await supabase.auth.signInWithPassword({
-                email,
+                email: normalizedEmail,
                 password,
             })
             if (finalSignInError) throw finalSignInError

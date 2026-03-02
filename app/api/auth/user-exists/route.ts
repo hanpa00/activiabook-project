@@ -10,10 +10,11 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 })
         }
 
+        const normalizedEmail = email.toLowerCase().trim()
         const supabase = await createClient()
 
         // Use RPC to check if user exists and get reactivation status
-        const { data, error } = await supabase.rpc('get_user_reactivation_status', { email_to_check: email })
+        const { data, error } = await supabase.rpc('get_user_reactivation_status', { email_to_check: normalizedEmail })
 
         if (error) {
             console.error('RPC Error (get_user_reactivation_status):', error)
