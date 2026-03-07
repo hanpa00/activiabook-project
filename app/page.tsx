@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/utils/supabase/server";
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
+export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Hero Section */}
@@ -20,11 +16,9 @@ export default async function Home() {
           <Link href="/dashboard">
             <Button size="lg">Go to Dashboard</Button>
           </Link>
-          {!user && (
-            <Link href="/login">
-              <Button variant="outline" size="lg">Login</Button>
-            </Link>
-          )}
+          <Link href="/login">
+            <Button variant="outline" size="lg">Login</Button>
+          </Link>
         </div>
       </section>
 

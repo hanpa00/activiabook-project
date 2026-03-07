@@ -136,9 +136,11 @@ function LoginForm() {
           <Button variant="outline" className="w-full" onClick={handleSignUp} disabled={loading}>
             Sign Up
           </Button>
+          {/*
           <p className="text-xs text-center text-muted-foreground mt-2">
             Docker Setup: Sign ups should auto-confirm if configured.
           </p>
+         */}
         </CardFooter>
       </Card>
     </div>

@@ -40,8 +40,37 @@ export function SiteHeader() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        // Grace period: skip profile check for newly created users
+        // to allow the DB trigger time to create the profile row
+        const createdAt = new Date(authUser.created_at).getTime()
+        const isNewUser = (Date.now() - createdAt) < 60_000 // 60 seconds
+
+        if (!isNewUser) {
+          // Verify profile exists and is not deleted
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('deleted_at')
+            .eq('id', authUser.id)
+            .single()
+
+          // Only sign out for definitive "profile missing" or "deleted" cases
+          // Treat query errors as transient (don't sign out)
+          const profileMissing = !profileError && !profile
+          const profileDeleted = !profileError && profile?.deleted_at
+          const notFound = profileError?.code === 'PGRST116'
+
+          if (profileMissing || profileDeleted || notFound) {
+            console.log('SiteHeader: Profile missing or deleted, signing out')
+            await supabase.auth.signOut()
+            setUser(null)
+            router.push('/login')
+            return
+          }
+        }
+      }
+      setUser(authUser)
     }
     getUser()
 
@@ -68,44 +97,51 @@ export function SiteHeader() {
               ActiviaBook
             </span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link
-              href="/dashboard"
-              className="transition-colors hover:text-foreground/80 text-foreground"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/ledger"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Ledger
-            </Link>
-            <Link
-              href="/accounts"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Accounts
-            </Link>
-            <Link
-              href="/reports/profit-and-loss"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Profit & Loss
-            </Link>
-            <Link
-              href="/tools"
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-            >
-              Tools
-            </Link>
-          </nav>
+          {user && (
+            <nav className="flex items-center space-x-6 text-sm font-medium">
+              <Link
+                href="/dashboard"
+                className="transition-colors hover:text-foreground/80 text-foreground"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/ledger"
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                Ledger
+              </Link>
+              <Link
+                href="/accounts"
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                Accounts
+              </Link>
+              <Link
+                href="/reports/profit-and-loss"
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                Profit & Loss
+              </Link>
+              <Link
+                href="/tools"
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
+                Tools
+              </Link>
+            </nav>
+          )}
         </div>
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
+            {!user && (
+              <Link href="/" className="flex items-center space-x-2 md:hidden">
+                <span className="font-bold">ActiviaBook</span>
+              </Link>
+            )}
           </div>
           <nav className="flex items-center gap-2">
-            {selectedCustomer && (
+            {user && selectedCustomer && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="flex items-center gap-2 h-9 px-3">
@@ -195,6 +231,6 @@ export function SiteHeader() {
         </div>
       </div>
       <ProfileDialog open={isProfileOpen} onOpenChange={setIsProfileOpen} />
-    </header>
+    </header >
   )
 }

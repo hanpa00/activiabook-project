@@ -2,6 +2,28 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const AUTH_COOKIE_NAME = 'sb-activiabook-auth-token'
+
+/**
+ * Clear all Supabase auth cookies, including chunked ones.
+ * @supabase/ssr stores tokens in chunked cookies like:
+ *   sb-acitviabook-auth-token.0, sb-activiabook-auth-token.1, etc.
+ * We must delete ALL of them to fully invalidate the session.
+ */
+function clearAllAuthCookies(request: NextRequest, response: NextResponse) {
+  const allCookies = request.cookies.getAll()
+  for (const cookie of allCookies) {
+    if (cookie.name === AUTH_COOKIE_NAME || cookie.name.startsWith(`${AUTH_COOKIE_NAME}.`)) {
+      response.cookies.delete(cookie.name)
+    }
+  }
+}
+
+function hasAuthCookies(request: NextRequest): boolean {
+  const allCookies = request.cookies.getAll()
+  return allCookies.some(c => c.name === AUTH_COOKIE_NAME || c.name.startsWith(`${AUTH_COOKIE_NAME}.`))
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -51,14 +73,20 @@ export async function updateSession(request: NextRequest) {
       data: { user: authUser },
       error,
     } = await supabase.auth.getUser()
-    user = authUser
+    if (error) {
+      // Auth error can be transient (session propagation delay, network blips).
+      // Do NOT clear cookies here — it breaks new signups where the session
+      // hasn't fully propagated yet. Just treat as unauthenticated.
+      console.warn("Auth getUser error in middleware:", error.message)
+      user = null
+    } else {
+      user = authUser
+    }
   } catch (error) {
     // If refreshing the token fails (e.g. DB reset), treat as logged out
-    console.error("Auth error in middleware:", error)
+    console.error("Auth exception in middleware:", error)
     user = null
   }
-
-
 
   const path = request.nextUrl.pathname
 
@@ -74,25 +102,66 @@ export async function updateSession(request: NextRequest) {
     path.startsWith('/api/auth') ||
     path.startsWith('/api/legal')
 
-  if (user && !isPublicPath) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('deleted_at')
-      .eq('id', user.id)
-      .single()
+  // Profile existence check — runs on ALL paths when user is authenticated.
+  // This ensures ghost sessions are caught even on public pages (e.g. landing page).
+  // Skip for newly created users (grace period) to allow the DB trigger to create the profile.
+  if (user) {
+    const userCreatedAt = new Date(user.created_at).getTime()
+    const now = Date.now()
+    const GRACE_PERIOD_MS = 60_000 // 60 seconds grace for profile creation trigger
+    const isNewUser = (now - userCreatedAt) < GRACE_PERIOD_MS
 
-    if (profile?.deleted_at) {
-      // Clear session by redirecting to a sign-out flow or just clearing cookies
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      url.searchParams.set('error', 'account_closed')
+    if (isNewUser) {
+      console.log(`Middleware: User ${user.id} created ${Math.round((now - userCreatedAt) / 1000)}s ago — skipping profile check (grace period)`)
+    } else {
+      const { data: profile, error: profileError, status: profileStatus } = await supabase
+        .from('profiles')
+        .select('deleted_at')
+        .eq('id', user.id)
+        .single()
 
-      // We create a response that clears the auth cookie
-      const response = NextResponse.redirect(url)
-      response.cookies.delete('sb-activiabook-auth-token')
-      return response
-    }
-  }
+      console.log(`Middleware: Profile check for user ${user.id} — data:`, JSON.stringify(profile), 'error:', JSON.stringify(profileError), 'status:', profileStatus)
+
+      // Handle profile status
+      let shouldLogout = false
+      let logoutReason = ''
+
+      if (profileError) {
+        // PGRST116: JSON object requested, but no rows returned (Not Found)
+        // 406: Not Acceptable (often returned for missing records with .single())
+        const isNotFound = profileError.code === 'PGRST116' || profileStatus === 406 || profileStatus === 404
+
+        if (isNotFound) {
+          shouldLogout = true
+          logoutReason = 'profile_missing'
+          console.log(`Middleware: Profile missing for user ${user.id}. Triggering logout.`)
+        } else {
+          // Transient error (e.g. 500, network timeout). 
+          // We DO NOT logout to avoid accidental lockouts during outages.
+          console.error(`Middleware: Transient error fetching profile for user ${user.id}:`, profileError)
+        }
+      } else if (!profile) {
+        // Profile query succeeded but returned null (no matching row)
+        shouldLogout = true
+        logoutReason = 'profile_missing'
+        console.log(`Middleware: Profile null for user ${user.id}. Triggering logout.`)
+      } else if (profile.deleted_at) {
+        shouldLogout = true
+        logoutReason = 'account_closed'
+        console.log(`Middleware: Profile explicitly marked as deleted for user ${user.id}. Triggering logout.`)
+      }
+
+      if (shouldLogout) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        url.searchParams.set('error', logoutReason)
+
+        const response = NextResponse.redirect(url)
+        clearAllAuthCookies(request, response)
+        return response
+      }
+    } // end else (not new user)
+  } // end if (user)
 
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()

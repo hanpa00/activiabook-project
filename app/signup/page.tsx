@@ -103,7 +103,25 @@ export default function SignUpPage() {
                 return
             }
 
-            // 2. Proceed with Supabase sign up
+            // 2. Validate against test accounts allow-list (if enabled)
+            const validationRes = await fetch('/api/auth/validate-signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: normalizedEmail,
+                    profileData: formData
+                }),
+            })
+
+            if (!validationRes.ok) {
+                const validationData = await validationRes.json()
+                setError(validationData.error || 'Signup is restricted.')
+                setLoading(false)
+                captchaRef.current?.reset()
+                return
+            }
+
+            // 3. Proceed with Supabase sign up
             const { data, error } = await supabase.auth.signUp({
                 email: normalizedEmail,
                 password: formData.password,
@@ -129,7 +147,23 @@ export default function SignUpPage() {
                 setLoading(false)
                 captchaRef.current?.reset()
             } else {
-                if (data.session) {
+                // Auto-confirm may return user but no session; sign in manually if needed
+                let hasSession = !!data.session
+
+                if (!hasSession && data.user) {
+                    const { error: signInError } = await supabase.auth.signInWithPassword({
+                        email: normalizedEmail,
+                        password: formData.password,
+                    })
+                    if (signInError) {
+                        setError('Account created. Please sign in manually.')
+                        setLoading(false)
+                        return
+                    }
+                    hasSession = true
+                }
+
+                if (hasSession) {
                     // Send welcome email (await to prevent browser cancellation on redirect)
                     try {
                         await fetch('/api/auth/signup-welcome', {
@@ -140,7 +174,6 @@ export default function SignUpPage() {
                     } catch (emailError) {
                         console.error('Welcome email fetch failed:', emailError)
                     }
-
                     window.location.href = '/dashboard'
                 } else {
                     setError('Check your email for the confirmation link.')
@@ -155,26 +188,26 @@ export default function SignUpPage() {
         }
     }
 
-    const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
-        if (!acceptedTerms) {
-            setError('You must accept the terms and privacy policy before using social sign-in.')
-            return
-        }
-
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: `${location.origin}/auth/callback`,
-                queryParams: {
-                    access_type: 'offline',
-                    prompt: 'consent',
-                },
-            },
-        })
-        if (error) {
-            setError(error.message)
-        }
-    }
+    // const handleSocialSignIn = async (provider: 'google' | 'facebook') => {
+    //     if (!acceptedTerms) {
+    //         setError('You must accept the terms and privacy policy before using social sign-in.')
+    //         return
+    //     }
+    //
+    //     const { error } = await supabase.auth.signInWithOAuth({
+    //         provider,
+    //         options: {
+    //             redirectTo: `${location.origin}/auth/callback`,
+    //             queryParams: {
+    //                 access_type: 'offline',
+    //                 prompt: 'consent',
+    //             },
+    //         },
+    //     })
+    //     if (error) {
+    //         setError(error.message)
+    //     }
+    // }
 
     const handleReactivate = async (mode: 'restore' | 'fresh' = 'restore') => {
         setIsReactivating(true)
@@ -222,8 +255,8 @@ export default function SignUpPage() {
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-4 py-12">
             <Card className="w-full max-w-2xl shadow-xl border-t-4 border-t-indigo-500">
                 <CardHeader className="space-y-1 text-center">
-                    <div className="mx-auto w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4">
-                        <span className="text-white font-bold text-2xl">EZ</span>
+                    <div className="mx-auto w-120 h-12 bg-indigo-600 rounded-lg flex items-center justify-center mb-4">
+                        <span className="text-white font-bold text-2xl"> Welcome to ActiviaBook </span>
                     </div>
                     <CardTitle className="text-3xl font-bold tracking-tight">Create an account</CardTitle>
                     <CardDescription>Enter your details below to get started with ActiviaBook</CardDescription>
@@ -355,6 +388,8 @@ export default function SignUpPage() {
                             Create Account
                         </Button>
 
+                        {/* Social sign-in disabled for beta
+<!--
                         <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <span className="w-full border-t" />
@@ -363,7 +398,6 @@ export default function SignUpPage() {
                                 <span className="bg-white dark:bg-slate-950 px-2 text-muted-foreground font-semibold">Or continue with</span>
                             </div>
                         </div>
-
                         <div className="grid grid-cols-2 gap-4">
                             <Button type="button" variant="outline" className="h-11 border-2" onClick={() => handleSocialSignIn('google')} disabled={loading}>
                                 <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
@@ -391,6 +425,8 @@ export default function SignUpPage() {
                                 Facebook
                             </Button>
                         </div>
+-->
+                        */}
                     </form>
                 </CardContent>
                 <CardFooter>

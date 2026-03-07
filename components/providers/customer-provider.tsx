@@ -74,8 +74,19 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     useEffect(() => {
-        refreshCustomers()
-    }, [refreshCustomers])
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT' || !session) {
+                setCustomers([])
+                setSelectedCustomer(null)
+                localStorage.removeItem('activiabook_customer_id')
+                document.cookie = 'activiabook_customer_id=; path=/; max-age=0'
+            } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                refreshCustomers()
+            }
+        })
+
+        return () => subscription.unsubscribe()
+    }, [supabase.auth, refreshCustomers])
 
     const selectCustomer = (customer: Customer) => {
         setSelectedCustomer(customer)
